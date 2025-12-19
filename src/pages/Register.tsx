@@ -1,23 +1,39 @@
 /**
- * Register Page
- * AI-generated registration form with full validation
+ * Register Page (Register.jsx)
+ * AI-generated registration form per assignment spec
+ * 
+ * REQUIREMENTS:
+ * - Controlled inputs: name, email, password, aadhaar
+ * - Client validation: all fields required, email includes @, password min 6 chars
+ * - Disable submit while loading
+ * - Show loading spinner inside button
+ * - Show error message below form
+ * - On success: Redirect to /login
+ * - UI: Centered card layout, responsive, smooth fade-in on mount
+ * 
+ * State Model:
+ * - name: string
+ * - email: string
+ * - password: string
+ * - aadhaar: string
+ * - isLoading: boolean
+ * - errorMessage: string | null
  */
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
-import { Shield, UserPlus } from 'lucide-react';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { Shield, UserPlus, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField } from '@/components/FormField';
 import { PasswordInput } from '@/components/PasswordInput';
-import { PasswordStrengthMeter } from '@/components/PasswordStrengthMeter';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { registerSchema, RegisterFormData } from '@/validations/schemas';
-import { authAPI } from '@/services/api';
+import { registerUser } from '@/services/api';
+import { isAuthenticated } from '@/utils/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -25,12 +41,17 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState(false);
+
+  // Redirect authenticated users to /profile
+  if (isAuthenticated()) {
+    return <Navigate to="/profile" replace />;
+  }
 
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -38,19 +59,17 @@ const Register = () => {
       name: '',
       email: '',
       password: '',
-      confirmPassword: '',
       aadhaar: '',
     },
   });
 
-  const password = watch('password');
-
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
+    setErrorMessage(null);
     setFormError(false);
 
     try {
-      await authAPI.register({
+      await registerUser({
         name: data.name,
         email: data.email,
         password: data.password,
@@ -65,21 +84,16 @@ const Register = () => {
       navigate('/login');
     } catch (error: unknown) {
       setFormError(true);
-      const errorMessage = 
+      const message = 
         (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 
         'Registration failed. Please try again.';
-      
-      toast({
-        variant: 'destructive',
-        title: 'Registration Failed',
-        description: errorMessage,
-      });
+      setErrorMessage(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Format Aadhaar input (allow only digits, max 12)
+  // Format Aadhaar input (digits only, max 12)
   const handleAadhaarInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.target.value = e.target.value.replace(/\D/g, '').slice(0, 12);
   };
@@ -104,7 +118,7 @@ const Register = () => {
                 {...register('name')}
                 placeholder="John Doe"
                 disabled={isLoading}
-                className={errors.name ? 'border-destructive' : ''}
+                className={cn(errors.name && 'border-destructive')}
               />
             </FormField>
 
@@ -114,7 +128,7 @@ const Register = () => {
                 type="email"
                 placeholder="john@example.com"
                 disabled={isLoading}
-                className={errors.email ? 'border-destructive' : ''}
+                className={cn(errors.email && 'border-destructive')}
               />
             </FormField>
 
@@ -125,16 +139,9 @@ const Register = () => {
                 disabled={isLoading}
                 error={!!errors.password}
               />
-              <PasswordStrengthMeter password={password} />
-            </FormField>
-
-            <FormField label="Confirm Password" error={errors.confirmPassword?.message} required>
-              <PasswordInput
-                {...register('confirmPassword')}
-                placeholder="••••••••"
-                disabled={isLoading}
-                error={!!errors.confirmPassword}
-              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Minimum 6 characters
+              </p>
             </FormField>
 
             <FormField label="Aadhaar Number" error={errors.aadhaar?.message} required>
@@ -144,21 +151,28 @@ const Register = () => {
                 maxLength={12}
                 onInput={handleAadhaarInput}
                 disabled={isLoading}
-                className={errors.aadhaar ? 'border-destructive' : ''}
+                className={cn(errors.aadhaar && 'border-destructive')}
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Your Aadhaar will be encrypted and stored securely
               </p>
             </FormField>
 
+            {/* Error message below form */}
+            {errorMessage && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                <p className="text-sm text-destructive">{errorMessage}</p>
+              </div>
+            )}
+
             <Button
               type="submit"
-              className="w-full mt-6"
+              className="w-full mt-6 btn-transition"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating Account...
                 </>
               ) : (
@@ -174,7 +188,7 @@ const Register = () => {
             <span className="text-muted-foreground">Already have an account? </span>
             <Link
               to="/login"
-              className="font-medium text-primary hover:underline transition-colors"
+              className="font-medium text-primary hover:underline btn-transition"
             >
               Sign in
             </Link>

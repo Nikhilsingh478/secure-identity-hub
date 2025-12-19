@@ -1,84 +1,97 @@
 /**
- * Login Page
- * AI-generated login form with validation and remember me
+ * Login Page (Login.jsx)
+ * AI-generated login form per assignment spec
+ * 
+ * REQUIREMENTS:
+ * - Controlled inputs: email, password
+ * - On submit: Call login API, store JWT, redirect to /profile
+ * - Handle: Invalid credentials, network failure
+ * - Prevent multiple submissions
+ * - Same UI/animation rules as Register
+ * 
+ * State Model:
+ * - email: string
+ * - password: string
+ * - isLoading: boolean
+ * - errorMessage: string | null
  */
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Shield, LogIn } from 'lucide-react';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { Shield, LogIn, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormField } from '@/components/FormField';
 import { PasswordInput } from '@/components/PasswordInput';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { loginSchema, LoginFormData } from '@/validations/schemas';
-import { authAPI } from '@/services/api';
-import { setToken, hasRememberMe } from '@/utils/auth';
+import { loginUser } from '@/services/api';
+import { setToken, isAuthenticated } from '@/utils/auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const Login = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState(false);
 
-  // Get redirect URL from location state
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/profile';
+  // Redirect authenticated users to /profile
+  if (isAuthenticated()) {
+    return <Navigate to="/profile" replace />;
+  }
 
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
       password: '',
-      rememberMe: hasRememberMe(),
     },
   });
 
-  const rememberMe = watch('rememberMe');
-
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setErrorMessage(null);
     setFormError(false);
 
     try {
-      const response = await authAPI.login({
+      const response = await loginUser({
         email: data.email,
         password: data.password,
       });
 
-      // Store token with remember me preference
-      setToken(response.data.token, data.rememberMe);
+      // Store JWT using auth utility
+      setToken(response.data.token);
 
       toast({
         title: 'Login Successful',
         description: 'Welcome back!',
       });
 
-      navigate(from, { replace: true });
+      // Redirect to /profile
+      navigate('/profile', { replace: true });
     } catch (error: unknown) {
       setFormError(true);
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Invalid email or password. Please try again.';
-
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: errorMessage,
-      });
+      
+      // Handle network failure vs invalid credentials
+      const axiosError = error as { response?: { data?: { message?: string }; status?: number }; message?: string };
+      
+      let message: string;
+      if (!axiosError.response) {
+        message = 'Service unavailable. Please try again later.';
+      } else {
+        message = axiosError.response.data?.message || 'Invalid email or password.';
+      }
+      
+      setErrorMessage(message);
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +118,7 @@ const Login = () => {
                 type="email"
                 placeholder="john@example.com"
                 disabled={isLoading}
-                className={errors.email ? 'border-destructive' : ''}
+                className={cn(errors.email && 'border-destructive')}
               />
             </FormField>
 
@@ -118,29 +131,21 @@ const Login = () => {
               />
             </FormField>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="rememberMe"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setValue('rememberMe', checked === true)}
-                disabled={isLoading}
-              />
-              <label
-                htmlFor="rememberMe"
-                className="text-sm font-medium text-muted-foreground cursor-pointer select-none"
-              >
-                Remember me
-              </label>
-            </div>
+            {/* Error message below form */}
+            {errorMessage && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                <p className="text-sm text-destructive">{errorMessage}</p>
+              </div>
+            )}
 
             <Button
               type="submit"
-              className="w-full mt-6"
+              className="w-full mt-6 btn-transition"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Signing in...
                 </>
               ) : (
@@ -156,7 +161,7 @@ const Login = () => {
             <span className="text-muted-foreground">Don't have an account? </span>
             <Link
               to="/register"
-              className="font-medium text-primary hover:underline transition-colors"
+              className="font-medium text-primary hover:underline btn-transition"
             >
               Create account
             </Link>

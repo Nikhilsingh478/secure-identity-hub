@@ -1,6 +1,18 @@
 /**
- * Main Application Component
- * AI-generated routing configuration with protected routes
+ * Main Application Component (App.jsx)
+ * AI-generated routing configuration per assignment spec
+ * 
+ * Routes:
+ * - /register
+ * - /login
+ * - /profile (protected)
+ * 
+ * Access Rules:
+ * - Unauthenticated user → /profile: Redirect to /login
+ * - Authenticated user → /login or /register: Redirect to /profile
+ * - Expired/invalid token: Auto logout + redirect to /login
+ * - Redirect logic is deterministic
+ * - No flicker on route change
  */
 
 import { Toaster } from "@/components/ui/toaster";
@@ -24,14 +36,14 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Redirect root to login */}
+          {/* Default route redirects to login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           
-          {/* Auth routes */}
+          {/* Auth routes - redirect authenticated users handled inside components */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           
-          {/* Protected routes */}
+          {/* Protected profile route */}
           <Route
             path="/profile"
             element={
@@ -41,7 +53,7 @@ const App = () => (
             }
           />
           
-          {/* Catch-all route */}
+          {/* 404 catch-all */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
