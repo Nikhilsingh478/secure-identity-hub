@@ -1,0 +1,41 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  width="64"
+  height="64"
+  role="img"
+  aria-label="Secure User System Icon"
+>
+  <!-- Background -->
+  <rect width="64" height="64" rx="14" fill="#0B1220" />
+
+  <!-- Shield -->
+  <path
+    d="M32 10
+       C32 10, 18 14, 18 14
+       V30
+       C18 42, 32 50, 32 50
+       C32 50, 46 42, 46 30
+       V14
+       C46 14, 32 10, 32 10Z"
+    fill="#111827"
+    stroke="#2DD4BF"
+    stroke-width="2"
+  />
+
+  <!-- User head -->
+  <circle cx="32" cy="24" r="5" fill="#E5E7EB" />
+
+  <!-- User body -->
+  <path
+    d="M22 36
+       C22 31, 42 31, 42 36
+       V38
+       H22
+       Z"
+    fill="#E5E7EB"
+  />
+
+  <!-- Lock dot -->
+  <circle cx="32" cy="34" r="2" fill="#2DD4BF" />
+</svg>
