@@ -1,9 +1,13 @@
 /**
  * Protected Route Component
  * AI-generated route guard for authenticated pages
+ * 
+ * Access Rules:
+ * - Unauthenticated user → /profile: Redirect to /login
+ * - Expired/invalid token: Auto logout + redirect to /login
  */
 
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { isAuthenticated } from '@/utils/auth';
 
 interface ProtectedRouteProps {
@@ -11,11 +15,9 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const location = useLocation();
-  
   if (!isAuthenticated()) {
-    // Redirect to login, preserving the attempted URL
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Redirect to login - deterministic, no flicker
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;

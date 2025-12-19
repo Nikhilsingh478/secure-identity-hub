@@ -1,16 +1,22 @@
 /**
- * API Service Layer
- * AI-generated Axios configuration and API endpoints
- * Ready to connect to backend when available
+ * Axios API Service Layer (api.js)
+ * AI-generated Axios configuration
+ * 
+ * STRICT REQUIREMENTS:
+ * - Base URL from VITE_API_BASE_URL only
+ * - JWT attached to Authorization header as: Bearer <token>
+ * - Interceptor: 401/403 → remove token → redirect to /login
+ * - Errors propagate to calling components (NOT caught here)
+ * - Tokens/responses are NEVER logged
  */
 
-import axios, { AxiosError, AxiosInstance, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { getToken, removeToken } from '@/utils/auth';
 
-// API base URL - will be replaced when backend is ready
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+// Base URL from environment ONLY - no fallback
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Create Axios instance with default config
+// Create Axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -19,9 +25,9 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
-// Request interceptor - attach JWT token to requests
+// Request interceptor - attach JWT to Authorization header
 apiClient.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -31,33 +37,29 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle common errors
+// Response interceptor - handle 401/403
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid - logout user
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // Remove token and redirect to login
       removeToken();
       window.location.href = '/login';
     }
+    // Errors propagate to calling components
     return Promise.reject(error);
   }
 );
 
-// Type definitions for API responses
-export interface ApiError {
-  error: boolean;
-  message: string;
-}
-
-export interface RegisterRequest {
+// Type definitions
+export interface RegisterPayload {
   name: string;
   email: string;
   password: string;
   aadhaar: string;
 }
 
-export interface LoginRequest {
+export interface LoginPayload {
   email: string;
   password: string;
 }
@@ -70,41 +72,30 @@ export interface ProfileResponse {
   name: string;
   email: string;
   aadhaar: string;
-  createdAt: string;
 }
 
 /**
- * Auth API Endpoints
+ * Register a new user
+ * POST /api/auth/register
  */
-export const authAPI = {
-  /**
-   * Register a new user
-   * POST /api/auth/register
-   */
-  register: async (data: RegisterRequest): Promise<AxiosResponse<{ message: string }>> => {
-    return apiClient.post('/api/auth/register', data);
-  },
-
-  /**
-   * Login user
-   * POST /api/auth/login
-   */
-  login: async (data: LoginRequest): Promise<AxiosResponse<LoginResponse>> => {
-    return apiClient.post('/api/auth/login', data);
-  },
+export const registerUser = (payload: RegisterPayload) => {
+  return apiClient.post('/api/auth/register', payload);
 };
 
 /**
- * Profile API Endpoints
+ * Login user
+ * POST /api/auth/login
  */
-export const profileAPI = {
-  /**
-   * Get user profile (protected route)
-   * GET /api/profile
-   */
-  getProfile: async (): Promise<AxiosResponse<ProfileResponse>> => {
-    return apiClient.get('/api/profile');
-  },
+export const loginUser = (payload: LoginPayload) => {
+  return apiClient.post<LoginResponse>('/api/auth/login', payload);
+};
+
+/**
+ * Fetch user profile (protected)
+ * GET /api/profile
+ */
+export const fetchUserProfile = () => {
+  return apiClient.get<ProfileResponse>('/api/profile');
 };
 
 export default apiClient;
